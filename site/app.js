@@ -93,8 +93,9 @@
     return '#' + route + (route === 'practice' && date ? '/' + date : '');
   }
   function go(route, date) {
-    window.location.hash = slugHash(route, date);
-    if (window.location.hash === slugHash(route, date)) onRoute();
+    const nextHash = slugHash(route, date);
+    if (window.location.hash === nextHash) onRoute();
+    else window.location.hash = nextHash;
   }
   function screenName() {
     const slug = (window.location.hash || '#overview').slice(1).split('/');
