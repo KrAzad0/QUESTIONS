@@ -25,6 +25,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_ready: ${{ steps.pagesetup.outcome == 'success' }}
     permissions:
       contents: write
       pages: write
@@ -86,16 +88,26 @@ jobs:
             git push
           fi
 
-      - name: Configure GitHub Pages
+      - name: Check whether GitHub Pages is enabled
+        id: pagesetup
         uses: actions/configure-pages@v5
+        continue-on-error: true
+
+      - name: Tell owner how to enable GitHub Pages if needed
+        if: steps.pagesetup.outcome != 'success'
+        run: |
+          echo "::warning::Enable GitHub Pages: Settings > Pages > Build and deployment > Source: GitHub Actions. Then manually rerun this workflow."
+          echo "Daily question generation is working; only public site deployment is pending."
 
       - name: Upload website artifact
+        if: steps.pagesetup.outcome == 'success'
         uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
   deploy:
     needs: build
+    if: needs.build.outputs.pages_ready == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write
