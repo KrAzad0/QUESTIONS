@@ -1,5 +1,13 @@
 # QUESTIONS — Physics 2027 Mission
 
+## Live study website
+
+**[Physics 2027 · Question Lab](https://krazad0.github.io/QUESTIONS/)** *(GitHub Pages must be enabled in [Settings → Pages](https://github.com/KrAzad0/QUESTIONS/settings/pages) before this address becomes live.)*
+
+A responsive web experience with a latest-question dashboard, fully worked solutions, topic filters, daily archives, per-browser progress, exam roadmap and official resources. The **08:00 IST** scheduled workflow creates ten dated practice exercises and rebuilds/deploys the entire site in one run.
+
+[Website installation and deployment instructions](docs/WEBSITE.md) · [Site source](site/) · [Daily publishing workflow](.github/workflows/daily-questions.yml)
+
 **A from-scratch, concept-first, question-driven preparation workspace for TIFR GS, Joint CSIR-UGC NET Physical Sciences, GATE Physics (PH), and IIT JAM Physics (PH).**
 
 > Last plan verification: 23 November 2026. Official notifications control over this repository; check linked exam websites for updates. All practice questions in this repository are original, **not** claimed to be previous-year questions.
