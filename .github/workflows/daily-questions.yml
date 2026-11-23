@@ -1,55 +1,109 @@
-name: Publish 10 daily physics questions
+name: Daily Physics Questions and GitHub Pages
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "questions/**"
+      - "docs/**"
+      - "scripts/**"
+      - ".github/workflows/daily-questions.yml"
+      - "README.md"
   schedule:
-    # 02:30 UTC = 08:00 Asia/Kolkata. GitHub may delay scheduled runs.
+    # 02:30 UTC corresponds to 08:00 Asia/Kolkata all year.
+    # Scheduled runs can start late on GitHub-hosted runners.
     - cron: "30 2 * * *"
   workflow_dispatch:
-  push:
-    # Smoke-test the generator after changes without creating an endless commit loop.
-    paths:
-      - "scripts/publish_daily.py"
-      - ".github/workflows/daily-questions.yml"
 
-permissions:
-  contents: write
-
+# A commit made by GITHUB_TOKEN does not trigger another workflow.
+# Generation and deployment therefore occur in the SAME run.
 concurrency:
-  group: physics-daily-questions
+  group: question-lab-publish
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     steps:
-      - name: Checkout repository
+      - name: Checkout project
         uses: actions/checkout@v4
         with:
           persist-credentials: true
 
-      - name: Set up Python
+      - name: Install Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Compile generator and exercise all rotating question families
+      - name: Check Python and JavaScript syntax
         run: |
-          python -m py_compile scripts/publish_daily.py
+          python -m py_compile scripts/publish_daily.py scripts/build_site.py
+          node --check site/app.js
+
+      - name: Test all rotating question patterns
+        run: |
           python scripts/publish_daily.py --date 2026-12-01 --stdout > /dev/null
           python scripts/publish_daily.py --date 2026-12-02 --stdout > /dev/null
           python scripts/publish_daily.py --date 2026-12-03 --stdout > /dev/null
 
-      - name: Generate today's 10 worked questions
+      - name: Generate original questions for today in India
         run: python scripts/publish_daily.py
 
-      - name: Commit only new dated question sheet
+      - name: Build dated archive and study materials for the website
+        run: python scripts/build_site.py
+
+      - name: Validate static website data
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path('site')
+          index = (root / 'index.html').read_text(encoding='utf-8')
+          assert 'Physics 2027' in index
+          data = json.loads((root / 'data/questions.json').read_text(encoding='utf-8'))
+          assert len(data['days']) >= 1
+          assert all(len(day['questions']) == 10 for day in data['days'])
+          assert data['totalQuestions'] == 10 * len(data['days'])
+          assert (root / 'data/roadmap.md').is_file()
+          assert (root / 'data/resources.md').is_file()
+          print(f"Verified {len(data['days'])} days and {data['totalQuestions']} questions")
+          PY
+
+      - name: Commit the new question sheet if necessary
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add questions/
           if git diff --cached --quiet; then
-            echo "Already published for today's IST date."
+            echo "Today's question set already exists. Keeping it unchanged."
           else
-            git commit -m "questions: publish 10 original physics problems for $(TZ=Asia/Kolkata date +%F)"
+            git commit -m "questions: publish 10 solved practice problems for $(TZ=Asia/Kolkata date +%F)"
             git push
           fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy question website
+        id: deployment
+        uses: actions/deploy-pages@v4
